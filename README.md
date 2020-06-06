@@ -16,9 +16,11 @@ pip3 install oauth2client
 - Use [this link](https://developers.google.com/drive/api/v3/quickstart/python) to generate your own `credentials.json`. Click Enable Google Drive API to Generate.
 - Since, all the Authentication process is taken care by Google we have access only to API. 
 - `credentials.json` Contains only API-KEY.
-
+### Setup KEY
+- `python3 main.py setup` to generate NEWKEY based on your Password. Key will be generated and saved as `key.key` in Current active Directory. 
+- Make a Secure Backup of the key file. If it is lost, your data cant be retreived.
+- Make sure `key.key` file is placed in working directory.
 ### One-Line Wonders
-- `python3 main.py setup` to generate NEWKEY based on your Password. Key will be generated and saved as `key.key` in Current active Directory. Make a Secure Backup of the key file.
 - `python3 main.py push [PATH_TO_FILE]`. This Command will push the file to the Drive using default Browser.
 - `python3 main.py pull [FILE_NAME_OF_THE_ENCRYPTED_PUSHED_TO_DRIVE]` to pull the file to the working directory.
 - Make sure `key.key` file is placed in working directory.
