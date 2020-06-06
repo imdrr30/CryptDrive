@@ -13,7 +13,7 @@ pip3 install oauth2client
 ## Usage
 ### First things first
 - Get your own API-KEY from Google, `credentials.json` file will be generated. Place that in the working directory along with source code.
-- Use this link to generate your own `credentials.json`. Since, all the authentication process is taken care by Google we have access only to API. `credentials.json` Contains only API-KEY.
+- Use [https://developers.google.com/drive/api/v3/quickstart/python]this link to generate your own `credentials.json`. Since, all the authentication process is taken care by Google we have access only to API. `credentials.json` Contains only API-KEY.
 
 ### One-Line Wonder
 - `python3 main.py setup` to generate NEWKEY based on your Password. Key will be generated and saved as `key.key` in Current active Directory. Make a Secure Backup of the key file.
