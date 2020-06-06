@@ -2,7 +2,7 @@
 Simple Cryptography Tool that saves and retrives files from your G Drive with a single line of command. Make use of unlimited cloud storage provided by Google.
 
 ## Unlimited Storage for Any Organization
-- Google provides unlimited storage for Any Organization using GSuite. But the Organization has access to the files you stored on the unlimited GSuite Drive. To Prevent them accessing, We can encrpyt. CryptDrive provides you One-Line solution for this. Using oneline commands you can get unlimited storage.
+Google provides unlimited storage for Any Organization using GSuite. But the Organization has access to the files you stored on the unlimited GSuite Drive. To Prevent them accessing, We can encrpyt. CryptDrive provides you One-Line solution for this. Using oneline commands you can get unlimited storage.
 
 ## Install Dependencies
 ```
