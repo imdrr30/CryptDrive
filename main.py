@@ -7,22 +7,18 @@ from google.auth.transport.requests import Request
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 import sys
 from cryptserve import *
+parents_id=[]
+
+
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
 
 def main():
-    """Shows basic usage of the Drive v3 API.
-    Prints the names and ids of the first 10 files the user has access to.
-    """
     creds = None
-    # The file token.pickle stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
     if os.path.exists('token.pickle'):
         with open('token.pickle', 'rb') as token:
             creds = pickle.load(token)
-    # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
@@ -30,21 +26,30 @@ def main():
             flow = InstalledAppFlow.from_client_secrets_file(
                 'credentials.json', SCOPES)
             creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
         with open('token.pickle', 'wb') as token:
             pickle.dump(creds, token)
     global service
     service = build('drive', 'v3', credentials=creds)
 
-
-def createFolder(name):
+def mkdir(name):
+    main()
     file_metadata = {
     'name': name,
     'mimeType': 'application/vnd.google-apps.folder'
     }
     file = service.files().create(body=file_metadata,
                                         fields='id').execute()
-    print ('Folder ID: %s' % file.get('id'))
+    return file.get('id')
+
+def createFolder(name,parents):
+    main()
+    file_metadata = {
+    'name': name,
+    'mimeType': 'application/vnd.google-apps.folder', 'parents' : parents
+    }
+    file = service.files().create(body=file_metadata,
+                                        fields='id').execute()
+    return file.get('id')
 
 
 
@@ -76,10 +81,11 @@ def puller(size,query,name,orgi):
             decrypt(name,orgi)
 
 
-def push(name, namepath):
+def push(name, namepath,parents):
+    check()
     main()
     encrypt(name,namepath)
-    file_metadata = {'name': '{}.bcpt'.format(name)}
+    file_metadata = {'name': '{}.bcpt'.format(name), 'parents': parents}
     media = MediaFileUpload('{}.bcpt'.format(name),
                             mimetype='application/octet-stream')
     print("fileuploading")
@@ -95,23 +101,79 @@ def setup():
     else:
         print("Key is not Generated. Please Try again..")
 
-if __name__ == '__main__':
-    if 'setup' in sys.argv:
-        setup()
-    if sys.argv[1]=='push':
-        data = sys.argv[2]
-        i = -1
-        while True:
-            try:
-                if data[i] == '/':
-                    break
-                i += -1
-            except IndexError:
-                name = data
-                path = data
+
+
+def searchFile(query):
+    main()
+    page_token = None
+    while True:
+        response = service.files().list(q="name contains '{}'".format(query),
+                                        spaces='drive',
+                                        fields='nextPageToken, files(id, name, size, modifiedTime)',
+                                        pageToken=page_token).execute()
+        for file in response.get('files', []):
+            print('Found file: %s %.2fMB %s' % (file.get('name'),int(file.get('size'))/(1048576),file.get('modifiedTime')))
+        page_token = response.get('nextPageToken', None)
+        if page_token is None:
+            break
+
+def check():
+    main()
+    page_token = None
+    while True:
+        response = service.files().list(q="name contains 'CryptDrive'",
+                                        spaces='drive',
+                                        fields='nextPageToken, files(id, name, mimeType)',
+                                        pageToken=page_token).execute()
+        for file in response.get('files', []):
+            if 'application/vnd.google-apps.folder'==file.get('mimeType'):
+                parents_id.append(file.get('id'))
                 break
-        name = data[i + 1:]
-        path = data
-        push(name, path)
-    if sys.argv[1] == 'pull':
-        pull("{}.bcpt".format(sys.argv[2]), sys.argv[2])
+            else:
+                continue
+        page_token = response.get('nextPageToken', None)
+        if page_token is None:
+            break
+
+def pushdir(dir):
+    check()
+    a = os.path.split(dir)
+    par = ['{}'.format(createFolder(a[-1],parents_id))]
+    for item in os.listdir(dir):
+        push(item, "{}/{}".format(dir,item),par)
+
+
+if __name__ == '__main__':
+    try:
+        if 'setup' in sys.argv:
+            setup()
+        elif sys.argv[1]=='push':
+            data = sys.argv[2]
+            i = -1
+            while True:
+                try:
+                    if data[i] == '/':
+                        break
+                    i += -1
+                except IndexError:
+                    name = data
+                    path = data
+                    break
+            name = data[i + 1:]
+            path = data
+            push(name, path,parents_id)
+        elif sys.argv[1] == 'pull':
+            pull("{}.bcpt".format(sys.argv[2]), sys.argv[2])
+        elif sys.argv[1] == 'mkdir':
+            mkdir(sys.argv[2])
+        elif sys.argv[1] == 'lookfor':
+            searchFile(sys.argv[2])
+        elif sys.argv[1] == 'pushdir':
+            pushdir(sys.argv[2])
+    except:
+        print("""        Usage python3 main.py setup - To Generate KEYFILE
+        python3 main.py push [PATH_TO_FILE] - To encrypt and push file to Google Drive.
+        python3 main.py pull [FILE_NAME_SAVED_IN_DRIVE] - To decrypt and pull file from Google Drive
+        python3 main.py pushdir [PATH_TO_DIR] - To encrypt and push directory and its files to Google Drive
+        python3 main.py mkdir [NEW_DIR_NAME_IN_GDRIVE] - To Create NEW directory in google drive
+        python3 main.py lookfor [FILE_NAME] - To search in Google Drive""")
