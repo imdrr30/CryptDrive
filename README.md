@@ -21,6 +21,9 @@ pip3 install oauth2client
 - Make a Secure Backup of the key file. If it is lost, your data cant be retreived.
 - Make sure `key.key` file is placed in working directory.
 ### One-Line Wonders
-- `python3 main.py push [PATH_TO_FILE]`. This Command will push the file to the Drive using default Browser.
-- `python3 main.py pull [FILE_NAME_OF_THE_ENCRYPTED_PUSHED_TO_DRIVE]` to pull the file to the working directory.
+- `python3 main.py push [PATH_TO_FILE]`. This Command will encrypt push the file to the Drive using default Browser.
+- `python3 main.py pull [FILE_NAME_OF_THE_ENCRYPTED_PUSHED_TO_DRIVE]` to decrypt pull the file to the working directory.
+- `python3 main.py pushdir [PATH_TO_DIR]`- To encrypt and push directory and its files to Google Drive.
+- `python3 main.py mkdir [NEW_DIR_NAME_IN_GDRIVE]` - To Create NEW directory in google drive
+- `python3 main.py lookfor [FILE_NAME]` - To search in Google Drive
 - Make sure `key.key` file is placed in working directory.
