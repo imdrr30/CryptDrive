@@ -12,7 +12,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.fernet import Fernet
-
+import sys
 parents_id = []
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
@@ -36,17 +36,15 @@ def new(uinp):
 def decrypter(name,orgi):
     file = open(name, 'rb')
     filedata = file.read()
-    print("File Opened")
     file.close()
     file2 = open('key.key', 'rb')
-    print("Key Opened")
     key2 = file2.read()
     file2.close()
     ff = Fernet(key2)
     decrpd = ff.decrypt(filedata)
     with open(orgi, 'wb') as fd:
         fd.write(decrpd)
-    print("Decrypted")
+    print(orgi)
     os.remove(name)
 
 
@@ -79,6 +77,7 @@ def encrypterdir(name,namepath):
     with open('{}.bcpt'.format(namepath), 'wb') as f:
         f.write(encrpd)
         print("Encrypted")
+        os.remove(namepath)
 
 def auth():
     creds = None
@@ -162,6 +161,17 @@ def pusher(name, namepath,parents):
     os.remove('{}.bcpt'.format(name))
 
 
+def pusher2(name, namepath,parents):
+    file_metadata = {'name': name, 'parents': parents}
+    media = MediaFileUpload(namepath,
+                            mimetype='application/octet-stream')
+    print(name, " is being uploaded")
+    file = service.files().create(body=file_metadata,
+                                  media_body=media,
+                                  fields='id').execute()
+
+
+
 def setup():
     if new(input("Please Enter New Password to generate Key: ")):
         print("Key Generated Successfully and saved as key.key")
@@ -178,7 +188,7 @@ def lookfor(query):
                                         fields='nextPageToken, files(id, name, size, modifiedTime)',
                                         pageToken=page_token).execute()
         for file in response.get('files', []):
-            print('Found file: %s %.2fMB %s' % (file.get('name'),int(file.get('size'))/(1048576),file.get('modifiedTime')))
+            print('Found file: %s %s %s' % (file.get('name'),file.get('id'),file.get('modifiedTime')))
         page_token = response.get('nextPageToken', None)
         if page_token is None:
             break
@@ -206,13 +216,28 @@ def check():
             break
 
 
+
+def pushdirchild(dir,parent):
+    a = os.path.split(dir)
+    par = ['{}'.format(createFolder(a[-1], parent))]
+    for item in os.listdir(dir):
+        if os.path.isdir(dir+'/'+item):
+            pushdirchild(dir+'/'+item,par)
+        else:
+            pusher2(item, "{}/{}".format(dir,item),par)
+
+
+
 def pushdir(dir):
     check()
+    encryptdir(dir)
     a = os.path.split(dir)
-    par = ['{}'.format(createFolder(a[-1],parents_id))]
+    par = ['{}'.format(createFolder(a[-1], parents_id))]
     for item in os.listdir(dir):
-        pusher(item, "{}/{}".format(dir,item),par)
-
+        if os.path.isdir(dir+'/'+item):
+            pushdirchild(dir+'/'+item,par)
+        else:
+            pusher2(item, "{}/{}".format(dir,item),par)
 
 def push(data):
     i = -1
@@ -241,7 +266,10 @@ def decrypt(data):
 
 def decryptdir(data):
     for file in os.listdir(data):
-        decrypter('{}/{}'.format(data, file), '{}/{}'.format(data, file[:-5]))
+        if os.path.isdir(data+'/'+file):
+            decryptdir(data+'/'+file)
+        else:
+            decrypter('{}/{}'.format(data, file), '{}/{}'.format(data, file[:-5]))
         try:
             os.remove('{}/{}'.format(data, file))
         except:
@@ -254,7 +282,83 @@ def encrypt(data):
 
 def encryptdir(data):
     for file in os.listdir(data):
-        try:
+        if os.path.isdir(data+'/'+file):
+            encryptdir(data+'/'+file)
+        else:
             encrypterdir(file,'{}/{}'.format(data, file))
-        except:
-            pass
+    print("Files are Encrypted, Starting Upload........")
+
+
+def pullerdir(data,namepath):
+    idd,parr ='',namepath
+    auth()
+    page_token=None
+    while True:
+        response = service.files().list(q="'{}' in parents".format(data),
+                                        spaces='drive',
+                                        fields='nextPageToken, files(id, name, size,mimeType, modifiedTime)',
+                                        pageToken=page_token).execute()
+        for file in response.get('files', []):
+            namepath = parr+'/'+file.get('name')
+            if file.get('mimeType')=='application/vnd.google-apps.folder':
+                print(parr)
+                os.mkdir(namepath)
+                pullerdir(file.get('id'), namepath)
+            else:
+                request = service.files().get_media(fileId=file.get('id'))
+                fh = io.BytesIO()
+                downloader = MediaIoBaseDownload(fh, request)
+                done = False
+                while done is False:
+                    status, done = downloader.next_chunk()
+                    print(namepath)
+                    with io.open(namepath, 'wb') as f:
+                        fh.seek(0)
+                        f.write(fh.read())
+        page_token = response.get('nextPageToken', None)
+        if page_token is None:
+            break
+
+
+def pulldir(data):
+    auth()
+    response = service.files().list(q="name contains '{}'".format(data),
+                                    spaces='drive',
+                                    fields='nextPageToken, files(id)',
+                                    ).execute()
+    for file in response.get('files', []):
+        os.mkdir(data)
+        pullerdir(file.get('id'),data)
+        decryptdir(data)
+        break
+
+
+
+
+if __name__ == "__main__":
+    try:
+        a = sys.argv
+        if 'setup' == a[1].lower():
+            setup()
+        elif 'push' == a[1].lower():
+            push(a[2])
+        elif 'pull' == a[1].lower():
+            pull(a[2])
+        elif 'pushdir' == a[1].lower():
+            pushdir(a[2])
+        elif 'mkdir' == a[1].lower():
+            mkdir(a[2])
+        elif 'lookfor' == a[1].lower():
+            lookfor(a[2])
+        elif 'encrypt' == a[1].lower():
+            encrypt(a[2])
+        elif 'encryptdir' == a[1].lower():
+            encryptdir(a[2])
+        elif 'decryptdir' == a[1].lower():
+            decryptdir(a[2])
+        elif 'decrypt' == a[1].lower():
+            encrypt(a[2])
+        elif 'pulldir' == a[1].lower():
+            pulldir(a[2])
+    except:
+        pass
