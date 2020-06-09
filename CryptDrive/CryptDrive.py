@@ -334,8 +334,7 @@ def pulldir(data):
 
 
 
-
-if __name__ == "__main__":
+def main():
     try:
         a = sys.argv
         if 'setup' == a[1].lower():
@@ -362,3 +361,7 @@ if __name__ == "__main__":
             pulldir(a[2])
     except:
         pass
+
+
+if __name__ == "__main__":
+    main()
